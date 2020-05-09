@@ -43,6 +43,9 @@ impl Rule {
             Rule::ReplaceEnd(String::from(a[0]), String::from(a[1]))
         } else if line.contains(':') {
             let a: Vec<&str> = line.split(':').collect();
+            if a[0] == a[1] {
+                panic!("Error: Colon (:) Rule has Same Pattern!!");
+            }
             Rule::Replace(String::from(a[0]), String::from(a[1]))
         } else {
             Rule::Comment(line)
