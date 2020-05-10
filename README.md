@@ -34,3 +34,12 @@ $ cargo run ./sample.mao <<< oooooooooooo
     Running `target/debug/mao ./sample.mao`
 12
 ```
+
+## Build & Install
+
+You need cargo ([cargo installation is very easy!](https://doc.rust-lang.org/cargo/getting-started/installation.html)).
+
+```bash
+make build
+make user-install  # Put binary at ~/.local/bin
+```
