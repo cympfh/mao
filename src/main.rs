@@ -21,6 +21,13 @@ struct Opts {
         default_value = "500"
     )]
     max_len: usize,
+    #[structopt(
+        name = "incremental",
+        long = "incremental",
+        short = "i",
+        help = "incremental running (by steps)"
+    )]
+    incremental: bool,
     #[structopt(name = "debug", long = "debug", help = "debug (or verbose) mode")]
     debug: bool,
 }
@@ -93,17 +100,19 @@ impl Program {
             .collect();
         Program(rules)
     }
-    fn eval(&self, input: String, max_steps: usize, max_len: usize, debug: bool) -> Option<String> {
+    fn eval(&self, input: String, opt: &Opts) -> Option<String> {
         let mut buf = input;
-        if debug {
+        if opt.debug {
             eprintln!("Input: {}", &buf);
         }
-        for time in 0..=max_steps {
-            if time == max_steps {
+        let stdin = std::io::stdin();
+        let mut dummy_input = String::new();
+        for time in 0..=opt.max_steps {
+            if time == opt.max_steps {
                 eprintln!("Error: Step Limit Exceeded");
                 return None;
             }
-            if buf.len() > max_len {
+            if buf.len() > opt.max_len {
                 eprintln!("Error: Length Limit Exceeded");
                 return None;
             }
@@ -113,14 +122,14 @@ impl Program {
                     RuleResult::Continue(buf_applied) => {
                         buf = buf_applied;
                         live = true;
-                        if debug {
+                        if opt.debug {
                             eprintln!("=> {} (by {})", buf, rule);
                         }
                         break;
                     }
                     RuleResult::End(buf_applied) => {
                         buf = buf_applied;
-                        if debug {
+                        if opt.debug {
                             eprintln!("=> {} (by {})", buf, rule);
                         }
                         break;
@@ -129,10 +138,18 @@ impl Program {
                 }
             }
             if !live {
-                if debug {
+                if opt.debug {
                     eprintln!("No Rule Applied");
                 }
                 break;
+            }
+            if opt.incremental {
+                match stdin.read_line(&mut dummy_input) {
+                    Ok(len) if len > 0 => {
+                        eprint!("\x1b[1F");
+                    }
+                    _ => {}
+                }
             }
         }
         Some(buf)
@@ -140,14 +157,18 @@ impl Program {
 }
 
 fn main() {
-    let opt = Opts::from_args();
-    if let Ok(content) = fs::read_to_string(opt.source) {
+    let mut opt = Opts::from_args();
+    if opt.incremental {
+        opt.debug = true;
+    }
+
+    if let Ok(content) = fs::read_to_string(&opt.source) {
         let prg = Program::parse(content);
         let stdin = std::io::stdin();
         let mut buffer = String::new();
         let _ = stdin.read_line(&mut buffer);
         buffer = String::from(buffer.trim_end());
-        if let Some(result) = prg.eval(buffer, opt.max_steps, opt.max_len, opt.debug) {
+        if let Some(result) = prg.eval(buffer, &opt) {
             println!("{}", result);
         }
     } else {
